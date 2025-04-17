@@ -1,0 +1,113 @@
+import org.hibernate.Session;
+import org.hibernate.SessionFactory;
+import org.hibernate.Transaction;
+import org.hibernate.cfg.Configuration;
+
+import javax.persistence.*;
+
+@Entity
+@Table(name = "students")
+class Student {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private int id;
+
+    private String name;
+    private int age;
+
+    public Student() {}
+
+    public Student(String name, int age) {
+        this.name = name;
+        this.age = age;
+    }
+
+    public int getId() { return id; }
+    public String getName() { return name; }
+    public int getAge() { return age; }
+
+    public void setName(String name) { this.name = name; }
+    public void setAge(int age) { this.age = age; }
+
+    @Override
+    public String toString() {
+        return "Student{id=" + id + ", name='" + name + "', age=" + age + '}';
+    }
+}
+
+public class HibernateStudentApp {
+    private static SessionFactory factory;
+
+    public static void main(String[] args) {
+        // Setup Hibernate with programmatic configuration
+        Configuration cfg = new Configuration();
+        cfg.configure() // Will try to load hibernate.cfg.xml, we override below
+           .addAnnotatedClass(Student.class)
+           .setProperty("hibernate.connection.driver_class", "com.mysql.cj.jdbc.Driver")
+           .setProperty("hibernate.connection.url", "jdbc:mysql://localhost:3306/studentdb")
+           .setProperty("hibernate.connection.username", "root")
+           .setProperty("hibernate.connection.password", "your_password")
+           .setProperty("hibernate.dialect", "org.hibernate.dialect.MySQL8Dialect")
+           .setProperty("hibernate.hbm2ddl.auto", "update")
+           .setProperty("show_sql", "true");
+
+        factory = cfg.buildSessionFactory();
+
+        // Create
+        Student s1 = new Student("Ankita", 21);
+        int studentId = createStudent(s1);
+
+        // Read
+        Student fetched = getStudent(studentId);
+        System.out.println("Fetched: " + fetched);
+
+        // Update
+        fetched.setAge(23);
+        updateStudent(fetched);
+
+        // Read after update
+        Student updated = getStudent(fetched.getId());
+        System.out.println("Updated: " + updated);
+
+        // Delete
+        deleteStudent(updated.getId());
+        System.out.println("Deleted student with ID " + updated.getId());
+
+        factory.close();
+    }
+
+    private static int createStudent(Student student) {
+        Session session = factory.openSession();
+        Transaction tx = session.beginTransaction();
+        int id = (int) session.save(student);
+        tx.commit();
+        session.close();
+        return id;
+    }
+
+    private static Student getStudent(int id) {
+        Session session = factory.openSession();
+        Student student = session.get(Student.class, id);
+        session.close();
+        return student;
+    }
+
+    private static void updateStudent(Student student) {
+        Session session = factory.openSession();
+        Transaction tx = session.beginTransaction();
+        session.update(student);
+        tx.commit();
+        session.close();
+    }
+
+    private static void deleteStudent(int id) {
+        Session session = factory.openSession();
+        Transaction tx = session.beginTransaction();
+        Student student = session.get(Student.class, id);
+        if (student != null) {
+            session.delete(student);
+        }
+        tx.commit();
+        session.close();
+    }
+}
